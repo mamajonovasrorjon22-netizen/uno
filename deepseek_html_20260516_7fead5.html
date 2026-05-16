@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Uno - Telegram Mini App</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(145deg, #1a472a 0%, #0e2a1a 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+        }
+
+        /* Telegram bilan to‘liq ekran rejimi */
+        .game-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 16px;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .current-card-area {
+            background: #f7f3e0;
+            border-radius: 30px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .current-card-label {
+            font-size: 14px;
+            color: #5a3e1a;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .current-card {
+            width: 120px;
+            height: 170px;
+            margin: 0 auto;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            transition: 0.1s;
+            border: 3px solid gold;
+        }
+
+        .players-hand {
+            background: rgba(0,0,0,0.3);
+            border-radius: 30px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .hand-title {
+            color: #ffecb3;
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .card-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .card {
+            width: 75px;
+            height: 110px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 24px;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: 0.05s linear;
+        }
+
+        .card:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+        }
+
+        .card-red { background: #e34234; color: white; border-bottom: 4px solid #8b0000; }
+        .card-blue { background: #4682b4; color: white; border-bottom: 4px solid #1e3a5f; }
+        .card-green { background: #3cb371; color: white; border-bottom: 4px solid #1e4d2e; }
+        .card-yellow { background: #f4c542; color: #3a2a00; border-bottom: 4px solid #b8860b; }
+        .card-wild { background: linear-gradient(135deg, #555, #222); color: gold; border-bottom: 4px solid #ffd966; }
+
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .info-box {
+            background: #0f2b1c;
+            padding: 8px 16px;
+            border-radius: 40px;
+            color: #ffefc0;
+            font-size: 14px;
+            font-weight: bold;
+            flex: 1;
+            text-align: center;
+        }
+
+        button {
+            background: #f5bc70;
+            border: none;
+            padding: 12px 24px;
+            font-weight: bold;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 4px 0 #a1622c;
+            transition: 0.05s linear;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #a1622c;
+        }
+
+        .message {
+            background: #251f14;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 50px;
+            color: #ffda99;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .close-btn {
+            background: #8b0000;
+            box-shadow: 0 4px 0 #4a0000;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="current-card-area">
+            <div class="current-card-label">🎴 Stol ustidagi karta</div>
+            <div class="current-card" id="currentCardDisplay">🃟</div>
+        </div>
+
+        <div class="players-hand">
+            <div class="hand-title">🎴 SIZNING QO'LINGIZ</div>
+            <div class="card-list" id="handContainer"></div>
+        </div>
+
+        <div class="info-bar">
+            <div class="info-box">📦 Qolgan: <span id="deckCount">0</span></div>
+            <div class="info-box">🏆 Hisob: <span id="scoreCount">0</span></div>
+        </div>
+
+        <button id="drawCardBtn">🃟 Karta olish</button>
+        <div id="messageBox" class="message">🎯 O'yin boshlandi! Kartani bosing</div>
+        
+        <!-- Telegramga ma'lumot yuborish tugmasi -->
+        <button id="closeGameBtn" class="close-btn">✖️ O'yinni yopish</button>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js?56"></script>
+    <script>
+        // ------------------ Telegram WebApp ------------------
+        const tg = window.Telegram.WebApp;
+        tg.expand();  // To'liq ekran rejimi
+        tg.enableClosingConfirmation();  // Yopishda tasdiqlash
+
+        // ------------------ Uno qoidalari ------------------
+        const colors = ["red", "blue", "green", "yellow"];
+        let deck = [];
+        let currentCard = null;
+        let playerHand = [];
+        let score = 0;
+        let gameMessage = "O'yin davom etmoqda";
+
+        // Karta yaratish
+        function createCard(color, value) {
+            return { color: color, value: value, isWild: (color === "wild") };
+        }
+
+        // Paluba yasash
+        function buildDeck() {
+            let newDeck = [];
+            for (let color of colors) {
+                for (let i = 0; i <= 9; i++) {
+                    newDeck.push(createCard(color, i.toString()));
+                    if (i !== 0) {
+                        newDeck.push(createCard(color, i.toString()));
+                    }
+                }
+                for (let i = 0; i < 2; i++) {
+                    newDeck.push(createCard(color, "+2"));
+                    newDeck.push(createCard(color, "stop"));
+                }
+            }
+            for (let i = 0; i < 4; i++) {
+                newDeck.push(createCard("wild", "wild"));
+                newDeck.push(createCard("wild", "wild+4"));
+            }
+            return shuffle(newDeck);
+        }
+
+        // Aralashtirish
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // O'yinni boshlash
+        function initGame() {
+            let fullDeck = buildDeck();
+            playerHand = [];
+            for (let i = 0; i < 7; i++) {
+                playerHand.push(fullDeck.pop());
+            }
+            do {
+                currentCard = fullDeck.pop();
+            } while (currentCard.isWild);
+            deck = fullDeck;
+            score = 0;
+            updateUI();
+        }
+
+        // Kartani o'ynash mumkinmi?
+        function canPlay(card, topCard) {
+            if (card.isWild) return true;
+            if (card.color === topCard.color) return true;
+            if (card.value === topCard.value) return true;
+            return false;
+        }
+
+        // Wild rang tanlash
+        function askWildColor() {
+            let colorChoice = prompt("Wild karta! Rang tanlang: qizil, ko'k, yashil, sariq", "qizil");
+            if (colorChoice === "qizil") return "red";
+            if (colorChoice === "ko'k") return "blue";
+            if (colorChoice === "yashil") return "green";
+            if (colorChoice === "sariq") return "yellow";
+            return "red";
+        }
+
+        // Kartani o'ynash
+        function playCard(index) {
+            let card = playerHand[index];
+            if (!canPlay(card, currentCard)) {
+                gameMessage = "❌ Bu kartani o'ynay olmaysiz!";
+                updateUI();
+                return false;
+            }
+
+            playerHand.splice(index, 1);
+
+            if (card.isWild) {
+                let chosenColor = askWildColor();
+                currentCard = { color: chosenColor, value: card.value, isWild: false };
+                gameMessage = `🌈 Wild! Rang o'zgardi: ${chosenColor}`;
+                if (card.value === "wild+4") {
+                    gameMessage = "🎭 Wild Draw Four! +4 karta";
+                }
+            } else {
+                currentCard = card;
+                gameMessage = `✅ ${card.color} ${card.value} kartasini o'ynadingiz!`;
+                if (card.value === "+2") {
+                    gameMessage += " ➕ +2 karta";
+                } else if (card.value === "stop") {
+                    gameMessage += " ⏸️ Navbat o'tkazib yuborildi";
+                }
+            }
+
+            // Hisob qo'shish
+            score += 10;
+            updateScore();
+
+            if (playerHand.length === 0) {
+                gameMessage = "🏆 TABRIKLAYMIZ! SIZ YUTDINGIZ! 🎉";
+                // Telegramga g'alaba haqida xabar yuborish
+                tg.sendData(JSON.stringify({ 
+                    action: "game_won", 
+                    score: score 
+                }));
+                updateUI();
+                return true;
+            }
+
+            updateUI();
+            return true;
+        }
+
+        // Karta olish
+        function drawCard() {
+            if (playerHand.length === 0) return;
+
+            if (deck.length === 0) {
+                gameMessage = "📦 Paluba tugadi, yangilanmoqda...";
+                deck = buildDeck();
+            }
+
+            let newCard = deck.pop();
+            playerHand.push(newCard);
+            gameMessage = `🃟 Yangi karta: ${newCard.color} ${newCard.value}`;
+
+            if (canPlay(newCard, currentCard)) {
+                gameMessage += " (Bu kartani o'ynashingiz mumkin!)";
+            }
+            updateUI();
+        }
+
+        // Hisobni yangilash (Telegramga yuborish)
+        function updateScore() {
+            document.getElementById("scoreCount").innerText = score;
+            // Hisobni botga yuborish
+            tg.sendData(JSON.stringify({
+                action: "update_score",
+                score: score
+            }));
+        }
+
+        // UI yangilash
+        function updateUI() {
+            const handDiv = document.getElementById("handContainer");
+            handDiv.innerHTML = "";
+
+            for (let i = 0; i < playerHand.length; i++) {
+                let card = playerHand[i];
+                let cardDiv = document.createElement("div");
+                cardDiv.className = "card";
+
+                if (card.isWild) {
+                    cardDiv.classList.add("card-wild");
+                    cardDiv.innerHTML = `<span>🌀 ${card.value === "wild" ? "WILD" : "W+4"}</span>`;
+                } else {
+                    if (card.color === "red") cardDiv.classList.add("card-red");
+                    if (card.color === "blue") cardDiv.classList.add("card-blue");
+                    if (card.color === "green") cardDiv.classList.add("card-green");
+                    if (card.color === "yellow") cardDiv.classList.add("card-yellow");
+                    let displayValue = card.value;
+                    if (displayValue === "stop") displayValue = "⏹️";
+                    cardDiv.innerHTML = `<span>${displayValue}</span>`;
+                }
+
+                cardDiv.onclick = (function(idx) { 
+                    return function() { playCard(idx); }; 
+                })(i);
+                handDiv.appendChild(cardDiv);
+            }
+
+            // Stol kartasini ko'rsatish
+            const currentDiv = document.getElementById("currentCardDisplay");
+            if (currentCard.isWild) {
+                currentDiv.innerHTML = `<span>🎴 WILD (${currentCard.color})</span>`;
+                currentDiv.style.background = "#222";
+                currentDiv.style.color = "gold";
+            } else {
+                let bgColor = "white";
+                if (currentCard.color === "red") bgColor = "#e34234";
+                if (currentCard.color === "blue") bgColor = "#4682b4";
+                if (currentCard.color === "green") bgColor = "#3cb371";
+                if (currentCard.color === "yellow") bgColor = "#f4c542";
+                currentDiv.style.background = bgColor;
+                currentDiv.style.color = (currentCard.color === "yellow") ? "#3a2a00" : "white";
+                let val = currentCard.value;
+                if (val === "stop") val = "⏹️";
+                currentDiv.innerHTML = `<span>${val}</span>`;
+            }
+
+            document.getElementById("deckCount").innerText = deck.length;
+            document.getElementById("messageBox").innerText = gameMessage;
+
+            if (playerHand.length === 0) {
+                handDiv.innerHTML = "<div style='color:gold; font-size:24px; text-align:center;'>✨ G'OLIB BO'LDINGIZ! ✨</div>";
+                document.getElementById("drawCardBtn").disabled = true;
+            } else {
+                document.getElementById("drawCardBtn").disabled = false;
+            }
+        }
+
+        // Tugmalar
+        document.getElementById("drawCardBtn").onclick = () => {
+            if (playerHand.length === 0) return;
+            drawCard();
+        };
+
+        document.getElementById("closeGameBtn").onclick = () => {
+            tg.close();  // Mini Appni yopish
+        };
+
+        // O'yinni boshlash
+        initGame();
+
+        // Telegram MainButton sozlamalari
+        tg.MainButton.setText("O'ynash");
+        tg.MainButton.show();
+        tg.MainButton.onClick(() => {
+            tg.sendData(JSON.stringify({
+                action: "game_ready",
+                message: "O'yin tayyor"
+            }));
+        });
+    </script>
+</body>
+</html>
